@@ -1,3 +1,6 @@
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 import type { Task } from '../types';
 
 interface TaskCardProps {
@@ -5,21 +8,27 @@ interface TaskCardProps {
 }
 
 function TaskCard({ task }: TaskCardProps) {
-  return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <h3 className="font-semibold">{task.title}</h3>
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({
+      id: task.id,
+    });
 
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs capitalize">
-          {task.status}
-        </span>
-      </div>
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <article
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="cursor-grab rounded-lg bg-white p-4 shadow"
+    >
+      <h3 className="font-medium">{task.title}</h3>
 
       <p className="mt-2 text-sm text-slate-600">{task.description}</p>
-
-      <p className="mt-4 text-sm font-medium capitalize text-slate-700">
-        Priority: {task.priority}
-      </p>
     </article>
   );
 }
