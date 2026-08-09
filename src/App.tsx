@@ -1,14 +1,14 @@
 import MainLayout from './layouts/MainLayout';
+import TaskForm from './features/tasks/components/TaskForm';
+import TaskList from './features/tasks/components/TaskList';
 
 function App() {
   return (
     <MainLayout>
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-semibold">Tasks</h2>
-        <p className="mt-2 text-slate-600">
-          Manage your tasks and track their progress.
-        </p>
-      </section>
+      <div className="space-y-6">
+        <TaskForm />
+        <TaskList />
+      </div>
     </MainLayout>
   );
 }
