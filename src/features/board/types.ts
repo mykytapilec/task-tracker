@@ -1,7 +1,7 @@
-import type { Task } from '../tasks/types';
+import type { Task, TaskStatus } from '../tasks/types';
 
 export interface BoardColumn {
-  id: string;
+  id: TaskStatus;
   title: string;
   tasks: Task[];
 }
