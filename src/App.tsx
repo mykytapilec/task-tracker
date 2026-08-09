@@ -1,13 +1,13 @@
-import MainLayout from './layouts/MainLayout';
+import Board from './features/board/components/Board';
 import TaskForm from './features/tasks/components/TaskForm';
-import TaskList from './features/tasks/components/TaskList';
+import MainLayout from './layouts/MainLayout';
 
 function App() {
   return (
     <MainLayout>
       <div className="space-y-6">
         <TaskForm />
-        <TaskList />
+        <Board />
       </div>
     </MainLayout>
   );
