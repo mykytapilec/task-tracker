@@ -16,14 +16,14 @@ interface AuthResponse {
 
 export const authApi = {
   login(payload: LoginPayload) {
-    return apiClient<AuthResponse>('/auth/login', {
+    return apiClient<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
   register(payload: RegisterPayload) {
-    return apiClient<AuthResponse>('/auth/register', {
+    return apiClient<AuthResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
