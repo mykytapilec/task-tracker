@@ -14,7 +14,7 @@ function AuthForm() {
   const login = useAuthStore((state) => state.login);
   const register = useAuthStore((state) => state.register);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
@@ -34,12 +34,13 @@ function AuthForm() {
   const isLogin = mode === 'login';
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-slate-900">
+        <h1 className="text-2xl font-semibold text-slate-900">
           {isLogin ? 'Sign in' : 'Create account'}
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-500">
           {isLogin
             ? 'Sign in to continue to your task board.'
             : 'Create an account to start managing your tasks.'}
@@ -51,6 +52,7 @@ function AuthForm() {
           <span className="mb-2 block text-sm font-medium text-slate-700">
             Email
           </span>
+
           <input
             type="email"
             value={email}
@@ -66,6 +68,7 @@ function AuthForm() {
           <span className="mb-2 block text-sm font-medium text-slate-700">
             Password
           </span>
+
           <input
             type="password"
             value={password}
