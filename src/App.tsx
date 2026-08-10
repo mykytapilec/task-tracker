@@ -1,14 +1,18 @@
-import Board from './features/board/components/Board';
-import TaskForm from './features/tasks/components/TaskForm';
-import MainLayout from './layouts/MainLayout';
+import AuthPage from './features/auth/components/AuthPage.tsx';
+import { useAuthStore } from './features/auth/store.js';
+import Board from './features/board/components/Board.tsx';
+import MainLayout from './layouts/MainLayout.tsx';
 
 function App() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
+
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <TaskForm />
-        <Board />
-      </div>
+      <Board />
     </MainLayout>
   );
 }
