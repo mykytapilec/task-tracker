@@ -1,21 +1,23 @@
 import { DndContext } from '@dnd-kit/core';
 
-import { useBoardStore } from '../store';
-import Column from './Column';
+import { useBoardStore } from '../store.js';
+
+import Column from './Column.js';
 
 function Board() {
   const board = useBoardStore((state) => state.board);
+  const isLoading = useBoardStore((state) => state.isLoading);
 
   const handleDragEnd = () => {
     return;
   };
 
-  if (board === null) {
-    return (
-      <section>
-        <h1 className="text-2xl font-bold">Loading board...</h1>
-      </section>
-    );
+  if (isLoading) {
+    return <p>Loading board...</p>;
+  }
+
+  if (!board) {
+    return <p>Board not found.</p>;
   }
 
   return (
