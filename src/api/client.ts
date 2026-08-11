@@ -1,5 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
+const TOKEN_KEY = 'task-tracker-token';
+
 interface ApiRequestOptions extends RequestInit {
   token?: string;
 }
@@ -14,12 +16,15 @@ export const apiClient = async <T>(
 ): Promise<T> => {
   const { token, ...fetchOptions } = options;
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const storedToken = localStorage.getItem(TOKEN_KEY);
+  const authToken = token ?? storedToken;
+
+  const response = await fetch(`${API_URL}/api${endpoint}`, {
     ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...(token && {
-        Authorization: `Bearer ${token}`,
+      ...(authToken && {
+        Authorization: `Bearer ${authToken}`,
       }),
       ...fetchOptions.headers,
     },
