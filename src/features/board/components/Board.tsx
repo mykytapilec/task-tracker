@@ -1,7 +1,6 @@
 import { DndContext } from '@dnd-kit/core';
 
 import { useBoardStore } from '../store';
-
 import Column from './Column';
 
 function Board() {
@@ -10,6 +9,14 @@ function Board() {
   const handleDragEnd = () => {
     return;
   };
+
+  if (board === null) {
+    return (
+      <section>
+        <h1 className="text-2xl font-bold">Loading board...</h1>
+      </section>
+    );
+  }
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
