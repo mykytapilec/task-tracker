@@ -4,6 +4,10 @@ interface ApiRequestOptions extends RequestInit {
   token?: string;
 }
 
+interface ApiErrorResponse {
+  message?: string;
+}
+
 export const apiClient = async <T>(
   endpoint: string,
   options: ApiRequestOptions = {},
@@ -21,17 +25,16 @@ export const apiClient = async <T>(
     },
   });
 
+  const data = await response.json().catch(() => null);
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({
-      message: 'Something went wrong',
-    }));
+    const errorMessage =
+      data && typeof data === 'object' && 'message' in data
+        ? (data as ApiErrorResponse).message
+        : 'Something went wrong';
 
-    throw new Error(error.message);
+    throw new Error(errorMessage);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json() as Promise<T>;
+  return data as T;
 };
