@@ -16,7 +16,7 @@ interface AuthResponse {
 
 export const authApi = {
   login(payload: LoginPayload) {
-    return apiClient<AuthResponse>('/api/auth/login', {
+    return apiClient<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

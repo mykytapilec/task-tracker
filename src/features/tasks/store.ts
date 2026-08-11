@@ -58,6 +58,8 @@ const mapApiTask = (task: ApiTask): Task => ({
   description: task.description ?? '',
   status: mapColumnToStatus(task.columnId),
   priority: mapPriority(task.priority),
+  columnId: task.columnId,
+  position: task.position,
   createdAt: task.createdAt,
   updatedAt: task.updatedAt,
 });

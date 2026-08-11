@@ -10,6 +10,7 @@ import MainLayout from './layouts/MainLayout.tsx';
 function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const fetchBoard = useBoardStore((state) => state.fetchBoard);
+  const board = useBoardStore((state) => state.board);
   const fetchTasks = useTaskStore((state) => state.fetchTasks);
 
   useEffect(() => {
@@ -22,6 +23,10 @@ function App() {
 
   if (!isAuthenticated) {
     return <AuthPage />;
+  }
+
+  if (!board) {
+    return <div>Loading board...</div>;
   }
 
   return (
