@@ -2,27 +2,39 @@ import { useState } from 'react';
 
 import { useTaskStore } from '../store';
 
-function TaskForm() {
+interface TaskFormProps {
+  columnId: string;
+}
+
+function TaskForm({ columnId }: TaskFormProps) {
   const addTask = useTaskStore((state) => state.addTask);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!title.trim()) {
+    if (!title.trim() || isSubmitting) {
       return;
     }
 
-    addTask({
-      title,
-      description,
-      priority: 'medium',
-    });
+    setIsSubmitting(true);
 
-    setTitle('');
-    setDescription('');
+    try {
+      await addTask({
+        title: title.trim(),
+        description: description.trim(),
+        priority: 'medium',
+        columnId,
+      });
+
+      setTitle('');
+      setDescription('');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -48,9 +60,10 @@ function TaskForm() {
 
       <button
         type="submit"
-        className="mt-4 rounded bg-slate-900 px-4 py-2 text-white"
+        disabled={isSubmitting}
+        className="mt-4 rounded bg-slate-900 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Add task
+        {isSubmitting ? 'Creating...' : 'Add task'}
       </button>
     </form>
   );

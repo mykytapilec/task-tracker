@@ -18,22 +18,24 @@ interface CreateTaskInput {
   title: string;
   description: string;
   priority: TaskPriority;
+  columnId: string;
 }
 
 interface UpdateTaskInput {
   title?: string;
   description?: string;
   priority?: TaskPriority;
+  columnId?: string;
 }
 
 interface TaskStore {
   tasks: Task[];
   isLoading: boolean;
   fetchTasks: () => Promise<void>;
-  addTask: (input: CreateTaskInput) => void;
-  updateTask: (id: string, input: UpdateTaskInput) => void;
-  deleteTask: (id: string) => void;
-  changeTaskStatus: (id: string, status: TaskStatus) => void;
+  addTask: (input: CreateTaskInput) => Promise<void>;
+  updateTask: (id: string, input: UpdateTaskInput) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  changeTaskStatus: (id: string, columnId: string) => Promise<void>;
 }
 
 const mapPriority = (priority: ApiTask['priority']): TaskPriority => {
@@ -84,19 +86,62 @@ export const useTaskStore = create<TaskStore>((set) => ({
     }
   },
 
-  addTask: () => {
-    throw new Error('Task creation is not implemented yet');
+  async addTask(input) {
+    const task = await apiClient<ApiTask>('/tasks', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: input.title,
+        description: input.description,
+        priority: input.priority.toUpperCase(),
+        columnId: input.columnId,
+      }),
+    });
+
+    set((state) => ({
+      tasks: [...state.tasks, mapApiTask(task)],
+    }));
   },
 
-  updateTask: () => {
-    throw new Error('Task update is not implemented yet');
+  async updateTask(id, input) {
+    const task = await apiClient<ApiTask>(`/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...input,
+        ...(input.priority && {
+          priority: input.priority.toUpperCase(),
+        }),
+      }),
+    });
+
+    set((state) => ({
+      tasks: state.tasks.map((currentTask) =>
+        currentTask.id === id ? mapApiTask(task) : currentTask,
+      ),
+    }));
   },
 
-  deleteTask: () => {
-    throw new Error('Task deletion is not implemented yet');
+  async deleteTask(id) {
+    await apiClient<void>(`/tasks/${id}`, {
+      method: 'DELETE',
+    });
+
+    set((state) => ({
+      tasks: state.tasks.filter((task) => task.id !== id),
+    }));
   },
 
-  changeTaskStatus: () => {
-    throw new Error('Task status update is not implemented yet');
+  async changeTaskStatus(id, columnId) {
+    const task = await apiClient<ApiTask>(`/tasks/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        columnId,
+      }),
+    });
+
+    set((state) => ({
+      tasks: state.tasks.map((currentTask) =>
+        currentTask.id === id ? mapApiTask(task) : currentTask,
+      ),
+    }));
   },
 }));
