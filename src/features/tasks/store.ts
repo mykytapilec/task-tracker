@@ -10,6 +10,11 @@ interface ApiTask {
   position: number;
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   columnId: string;
+  column: {
+    id: string;
+    title: string;
+    position: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +33,12 @@ interface UpdateTaskInput {
   columnId?: string;
 }
 
+interface ReorderTasksInput {
+  taskId: string;
+  columnId: string;
+  position: number;
+}
+
 interface TaskStore {
   tasks: Task[];
   isLoading: boolean;
@@ -36,18 +47,27 @@ interface TaskStore {
   updateTask: (id: string, input: UpdateTaskInput) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   changeTaskStatus: (id: string, columnId: string) => Promise<void>;
+  reorderTasks: (input: ReorderTasksInput) => void;
 }
 
 const mapPriority = (priority: ApiTask['priority']): TaskPriority => {
-  return priority.toLowerCase() as TaskPriority;
+  if (priority === 'HIGH') {
+    return 'high';
+  }
+
+  if (priority === 'MEDIUM') {
+    return 'medium';
+  }
+
+  return 'low';
 };
 
-const mapColumnToStatus = (columnId: string): TaskStatus => {
-  if (columnId === 'todo') {
+const mapColumnToStatus = (columnTitle: string): TaskStatus => {
+  if (columnTitle === 'To Do') {
     return 'todo';
   }
 
-  if (columnId === 'in-progress') {
+  if (columnTitle === 'In Progress') {
     return 'in-progress';
   }
 
@@ -58,7 +78,7 @@ const mapApiTask = (task: ApiTask): Task => ({
   id: task.id,
   title: task.title,
   description: task.description ?? '',
-  status: mapColumnToStatus(task.columnId),
+  status: mapColumnToStatus(task.column.title),
   priority: mapPriority(task.priority),
   columnId: task.columnId,
   position: task.position,
@@ -143,5 +163,68 @@ export const useTaskStore = create<TaskStore>((set) => ({
         currentTask.id === id ? mapApiTask(task) : currentTask,
       ),
     }));
+  },
+
+  reorderTasks({ taskId, columnId, position }) {
+    set((state) => {
+      const task = state.tasks.find((currentTask) => currentTask.id === taskId);
+
+      if (!task) {
+        return state;
+      }
+
+      const tasksWithoutDragged = state.tasks.filter(
+        (currentTask) => currentTask.id !== taskId,
+      );
+
+      const targetColumnTasks = tasksWithoutDragged
+        .filter((currentTask) => currentTask.columnId === columnId)
+        .sort((a, b) => a.position - b.position);
+
+      const boundedPosition = Math.max(
+        0,
+        Math.min(position, targetColumnTasks.length),
+      );
+
+      const reorderedTargetColumnTasks = [...targetColumnTasks];
+
+      reorderedTargetColumnTasks.splice(boundedPosition, 0, {
+        ...task,
+        columnId,
+      });
+
+      const positionMap = new Map(
+        reorderedTargetColumnTasks.map((currentTask, index) => [
+          currentTask.id,
+          index,
+        ]),
+      );
+
+      const updatedTasks = tasksWithoutDragged.map((currentTask) => {
+        const newPosition = positionMap.get(currentTask.id);
+
+        if (newPosition === undefined) {
+          return currentTask;
+        }
+
+        return {
+          ...currentTask,
+          columnId,
+          position: newPosition,
+        };
+      });
+
+      const movedTask = {
+        ...task,
+        columnId,
+        position: boundedPosition,
+      };
+
+      updatedTasks.push(movedTask);
+
+      return {
+        tasks: updatedTasks,
+      };
+    });
   },
 }));
