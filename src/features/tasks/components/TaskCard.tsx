@@ -11,17 +11,19 @@ interface TaskCardProps {
 
 function TaskCard({ task }: TaskCardProps) {
   const updateTask = useTaskStore((state) => state.updateTask);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: task.id,
-      disabled: isEditing,
+      disabled: isEditing || isDeleting,
     });
 
   const style = {
@@ -62,6 +64,28 @@ function TaskCard({ task }: TaskCardProps) {
       setIsEditing(false);
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (isDeleting) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${task.title}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await deleteTask(task.id);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -136,17 +160,33 @@ function TaskCard({ task }: TaskCardProps) {
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-medium">{task.title}</h3>
 
-        <button
-          type="button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => {
-            event.stopPropagation();
-            handleEdit();
-          }}
-          className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50"
-        >
-          Edit
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleEdit();
+            }}
+            disabled={isDeleting}
+            className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Edit
+          </button>
+
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleDelete();
+            }}
+            disabled={isDeleting}
+            className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
       </div>
 
       <p className="mt-2 text-sm text-slate-600">{task.description}</p>
