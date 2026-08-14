@@ -8,7 +8,7 @@ interface ApiTask {
   title: string;
   description: string | null;
   position: number;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  priority: number;
   columnId: string;
   column: {
     id: string;
@@ -47,15 +47,15 @@ interface TaskStore {
   updateTask: (id: string, input: UpdateTaskInput) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   changeTaskStatus: (id: string, columnId: string) => Promise<void>;
-  reorderTasks: (input: ReorderTasksInput) => void;
+  reorderTasks: (input: ReorderTasksInput) => Promise<void>;
 }
 
 const mapPriority = (priority: ApiTask['priority']): TaskPriority => {
-  if (priority === 'HIGH') {
+  if (priority === 3) {
     return 'high';
   }
 
-  if (priority === 'MEDIUM') {
+  if (priority === 2) {
     return 'medium';
   }
 
@@ -112,7 +112,8 @@ export const useTaskStore = create<TaskStore>((set) => ({
       body: JSON.stringify({
         title: input.title,
         description: input.description,
-        priority: input.priority.toUpperCase(),
+        priority:
+          input.priority === 'high' ? 3 : input.priority === 'medium' ? 2 : 1,
         columnId: input.columnId,
       }),
     });
@@ -128,7 +129,8 @@ export const useTaskStore = create<TaskStore>((set) => ({
       body: JSON.stringify({
         ...input,
         ...(input.priority && {
-          priority: input.priority.toUpperCase(),
+          priority:
+            input.priority === 'high' ? 3 : input.priority === 'medium' ? 2 : 1,
         }),
       }),
     });
@@ -165,66 +167,21 @@ export const useTaskStore = create<TaskStore>((set) => ({
     }));
   },
 
-  reorderTasks({ taskId, columnId, position }) {
-    set((state) => {
-      const task = state.tasks.find((currentTask) => currentTask.id === taskId);
-
-      if (!task) {
-        return state;
-      }
-
-      const tasksWithoutDragged = state.tasks.filter(
-        (currentTask) => currentTask.id !== taskId,
-      );
-
-      const targetColumnTasks = tasksWithoutDragged
-        .filter((currentTask) => currentTask.columnId === columnId)
-        .sort((a, b) => a.position - b.position);
-
-      const boundedPosition = Math.max(
-        0,
-        Math.min(position, targetColumnTasks.length),
-      );
-
-      const reorderedTargetColumnTasks = [...targetColumnTasks];
-
-      reorderedTargetColumnTasks.splice(boundedPosition, 0, {
-        ...task,
+  async reorderTasks({ taskId, columnId, position }) {
+    const task = await apiClient<ApiTask>(`/tasks/${taskId}/reorder`, {
+      method: 'PATCH',
+      body: JSON.stringify({
         columnId,
-      });
-
-      const positionMap = new Map(
-        reorderedTargetColumnTasks.map((currentTask, index) => [
-          currentTask.id,
-          index,
-        ]),
-      );
-
-      const updatedTasks = tasksWithoutDragged.map((currentTask) => {
-        const newPosition = positionMap.get(currentTask.id);
-
-        if (newPosition === undefined) {
-          return currentTask;
-        }
-
-        return {
-          ...currentTask,
-          columnId,
-          position: newPosition,
-        };
-      });
-
-      const movedTask = {
-        ...task,
-        columnId,
-        position: boundedPosition,
-      };
-
-      updatedTasks.push(movedTask);
-
-      return {
-        tasks: updatedTasks,
-      };
+        position,
+      }),
     });
+
+    set((state) => ({
+      tasks: state.tasks.map((currentTask) =>
+        currentTask.id === taskId ? mapApiTask(task) : currentTask,
+      ),
+    }));
+
+    await useTaskStore.getState().fetchTasks();
   },
 }));
