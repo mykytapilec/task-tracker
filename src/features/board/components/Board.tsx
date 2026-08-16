@@ -9,9 +9,18 @@ import { useState } from 'react';
 
 import TaskForm from '../../tasks/components/TaskForm';
 import { useTaskStore } from '../../tasks/store';
+import type { TaskPriority } from '../../tasks/types';
 import { useBoardStore } from '../store';
 
 import Column from './Column';
+
+type TaskSortMode = 'manual' | 'priority-high' | 'priority-low';
+
+const priorityOrder: Record<TaskPriority, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+};
 
 function Board() {
   const currentBoard = useBoardStore((state) => state.board);
@@ -19,6 +28,7 @@ function Board() {
   const reorderTasks = useTaskStore((state) => state.reorderTasks);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<TaskSortMode>('manual');
 
   if (!currentBoard) {
     return <p>Loading board...</p>;
@@ -108,12 +118,29 @@ function Board() {
     });
   }
 
-  const columnsWithTasks = board.columns.map((column) => ({
-    ...column,
-    tasks: tasks
+  const columnsWithTasks = board.columns.map((column) => {
+    const columnTasks = tasks
       .filter((task) => task.columnId === column.id)
-      .sort((a, b) => a.position - b.position),
-  }));
+      .sort((a, b) => {
+        if (sortMode === 'manual') {
+          return a.position - b.position;
+        }
+
+        const priorityDifference =
+          priorityOrder[b.priority] - priorityOrder[a.priority];
+
+        if (sortMode === 'priority-high') {
+          return priorityDifference || a.position - b.position;
+        }
+
+        return -priorityDifference || a.position - b.position;
+      });
+
+    return {
+      ...column,
+      tasks: columnTasks,
+    };
+  });
 
   const activeTask = activeTaskId
     ? tasks.find((task) => task.id === activeTaskId)
@@ -127,7 +154,25 @@ function Board() {
       onDragCancel={() => setActiveTaskId(null)}
     >
       <section>
-        <h1 className="text-2xl font-bold">{board.title}</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold">{board.title}</h1>
+
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <span>Sort:</span>
+
+            <select
+              value={sortMode}
+              onChange={(event) =>
+                setSortMode(event.target.value as TaskSortMode)
+              }
+              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+            >
+              <option value="manual">Manual</option>
+              <option value="priority-high">Priority: High → Low</option>
+              <option value="priority-low">Priority: Low → High</option>
+            </select>
+          </label>
+        </div>
 
         {columnsWithTasks[0] && (
           <div className="mt-6">
