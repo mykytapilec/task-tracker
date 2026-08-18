@@ -10,6 +10,8 @@ export interface Task {
   priority: TaskPriority;
   columnId: string;
   position: number;
+  parentTaskId: string | null;
+  subtasks: Task[];
   createdAt: string;
   updatedAt: string;
 }

@@ -9,7 +9,7 @@ import { useState } from 'react';
 
 import TaskForm from '../../tasks/components/TaskForm';
 import { useTaskStore } from '../../tasks/store';
-import type { TaskPriority } from '../../tasks/types';
+import type { Task, TaskPriority } from '../../tasks/types';
 import { useBoardStore } from '../store';
 
 import Column from './Column';
@@ -22,10 +22,17 @@ const priorityOrder: Record<TaskPriority, number> = {
   low: 1,
 };
 
+function containsTask(task: Task, taskId: string): boolean {
+  return task.subtasks.some(
+    (subtask) => subtask.id === taskId || containsTask(subtask, taskId),
+  );
+}
+
 function Board() {
   const currentBoard = useBoardStore((state) => state.board);
   const tasks = useTaskStore((state) => state.tasks);
   const reorderTasks = useTaskStore((state) => state.reorderTasks);
+  const updateTask = useTaskStore((state) => state.updateTask);
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<TaskSortMode>('manual');
@@ -40,7 +47,7 @@ function Board() {
     setActiveTaskId(String(event.active.id));
   }
 
-  function handleDragEnd(event: DragEndEvent) {
+  async function handleDragEnd(event: DragEndEvent) {
     setActiveTaskId(null);
 
     const { active, over } = event;
@@ -58,16 +65,46 @@ function Board() {
       return;
     }
 
+    if (overId.startsWith('subtask:')) {
+      const parentTaskId = overId.replace('subtask:', '');
+
+      if (parentTaskId === taskId) {
+        return;
+      }
+
+      const parentTask = tasks.find((task) => task.id === parentTaskId);
+
+      if (!parentTask) {
+        return;
+      }
+
+      if (containsTask(draggedTask, parentTaskId)) {
+        return;
+      }
+
+      if (draggedTask.parentTaskId === parentTaskId) {
+        return;
+      }
+
+      await updateTask(taskId, {
+        parentTaskId,
+      });
+
+      return;
+    }
+
     const targetColumn = board.columns.find((column) => column.id === overId);
 
     if (targetColumn) {
       const targetTasks = tasks
-        .filter((task) => task.columnId === targetColumn.id)
+        .filter(
+          (task) => task.columnId === targetColumn.id && !task.parentTaskId,
+        )
         .sort((a, b) => a.position - b.position);
 
       const position = targetTasks.length;
 
-      void reorderTasks({
+      await reorderTasks({
         taskId,
         columnId: targetColumn.id,
         position,
@@ -78,12 +115,14 @@ function Board() {
 
     const overTask = tasks.find((task) => task.id === overId);
 
-    if (!overTask) {
+    if (!overTask || overTask.parentTaskId) {
       return;
     }
 
     const targetTasks = tasks
-      .filter((task) => task.columnId === overTask.columnId)
+      .filter(
+        (task) => task.columnId === overTask.columnId && !task.parentTaskId,
+      )
       .sort((a, b) => a.position - b.position);
 
     let position = targetTasks.findIndex((task) => task.id === overTask.id);
@@ -111,7 +150,7 @@ function Board() {
       position -= 1;
     }
 
-    reorderTasks({
+    await reorderTasks({
       taskId,
       columnId: overTask.columnId,
       position: Math.max(0, position),
@@ -120,7 +159,7 @@ function Board() {
 
   const columnsWithTasks = board.columns.map((column) => {
     const columnTasks = tasks
-      .filter((task) => task.columnId === column.id)
+      .filter((task) => task.columnId === column.id && !task.parentTaskId)
       .sort((a, b) => {
         if (sortMode === 'manual') {
           return a.position - b.position;
@@ -150,7 +189,9 @@ function Board() {
     <DndContext
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragEnd={(event) => {
+        void handleDragEnd(event);
+      }}
       onDragCancel={() => setActiveTaskId(null)}
     >
       <section>

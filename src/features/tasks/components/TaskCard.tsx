@@ -1,3 +1,4 @@
+import { useDroppable } from '@dnd-kit/core';
 import { useState, type FormEvent } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -7,6 +8,12 @@ import type { Task, TaskPriority } from '../types';
 
 interface TaskCardProps {
   task: Task;
+}
+
+function containsTask(task: Task, taskId: string): boolean {
+  return task.subtasks.some(
+    (subtask) => subtask.id === taskId || containsTask(subtask, taskId),
+  );
 }
 
 function TaskCard({ task }: TaskCardProps) {
@@ -23,6 +30,12 @@ function TaskCard({ task }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: task.id,
+      disabled: isEditing || isDeleting,
+    });
+
+  const { setNodeRef: setSubtaskDropRef, isOver: isSubtaskDropOver } =
+    useDroppable({
+      id: `subtask:${task.id}`,
       disabled: isEditing || isDeleting,
     });
 
@@ -86,6 +99,12 @@ function TaskCard({ task }: TaskCardProps) {
       await deleteTask(task.id);
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  function handleSubtaskDrop() {
+    if (containsTask(task, task.id)) {
+      return;
     }
   }
 
@@ -196,6 +215,26 @@ function TaskCard({ task }: TaskCardProps) {
           {task.priority}
         </span>
       </div>
+
+      <div
+        ref={setSubtaskDropRef}
+        onDrop={handleSubtaskDrop}
+        className={`mt-4 rounded border border-dashed px-3 py-2 text-xs transition ${
+          isSubtaskDropOver
+            ? 'border-blue-500 bg-blue-50 text-blue-700'
+            : 'border-slate-300 text-slate-500'
+        }`}
+      >
+        Drop here to make subtask
+      </div>
+
+      {task.subtasks.length > 0 && (
+        <div className="mt-3 space-y-2 border-l-2 border-slate-200 pl-3">
+          {task.subtasks.map((subtask) => (
+            <TaskCard key={subtask.id} task={subtask} />
+          ))}
+        </div>
+      )}
     </article>
   );
 }
