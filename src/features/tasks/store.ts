@@ -10,11 +10,13 @@ interface ApiTask {
   position: number;
   priority: number;
   columnId: string;
+  parentTaskId: string | null;
   column: {
     id: string;
     title: string;
     position: number;
   };
+  subtasks?: ApiTask[];
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +26,7 @@ interface CreateTaskInput {
   description: string;
   priority: TaskPriority;
   columnId: string;
+  parentTaskId?: string | null;
 }
 
 interface UpdateTaskInput {
@@ -31,6 +34,7 @@ interface UpdateTaskInput {
   description?: string;
   priority?: TaskPriority;
   columnId?: string;
+  parentTaskId?: string | null;
 }
 
 interface ReorderTasksInput {
@@ -82,9 +86,44 @@ const mapApiTask = (task: ApiTask): Task => ({
   priority: mapPriority(task.priority),
   columnId: task.columnId,
   position: task.position,
+  parentTaskId: task.parentTaskId,
+  subtasks: task.subtasks?.map(mapApiTask) ?? [],
   createdAt: task.createdAt,
   updatedAt: task.updatedAt,
 });
+
+const buildTaskTree = (tasks: ApiTask[]): ApiTask[] => {
+  const taskMap = new Map<string, ApiTask>();
+
+  for (const task of tasks) {
+    taskMap.set(task.id, {
+      ...task,
+      subtasks: [],
+    });
+  }
+
+  for (const task of tasks) {
+    if (!task.parentTaskId) {
+      continue;
+    }
+
+    const parentTask = taskMap.get(task.parentTaskId);
+
+    if (!parentTask) {
+      continue;
+    }
+
+    parentTask.subtasks = [
+      ...(parentTask.subtasks ?? []),
+      taskMap.get(task.id)!,
+    ];
+  }
+
+  return tasks
+    .filter((task) => !task.parentTaskId)
+    .map((task) => taskMap.get(task.id)!)
+    .sort((a, b) => a.position - b.position);
+};
 
 export const useTaskStore = create<TaskStore>((set) => ({
   tasks: [],
@@ -94,7 +133,8 @@ export const useTaskStore = create<TaskStore>((set) => ({
     set({ isLoading: true });
 
     try {
-      const tasks = await apiClient<ApiTask[]>('/tasks');
+      const response = await apiClient<ApiTask[]>('/tasks');
+      const tasks = buildTaskTree(response);
 
       set({
         tasks: tasks.map(mapApiTask),
@@ -107,7 +147,7 @@ export const useTaskStore = create<TaskStore>((set) => ({
   },
 
   async addTask(input) {
-    const task = await apiClient<ApiTask>('/tasks', {
+    await apiClient<ApiTask>('/tasks', {
       method: 'POST',
       body: JSON.stringify({
         title: input.title,
@@ -115,16 +155,15 @@ export const useTaskStore = create<TaskStore>((set) => ({
         priority:
           input.priority === 'high' ? 3 : input.priority === 'medium' ? 2 : 1,
         columnId: input.columnId,
+        parentTaskId: input.parentTaskId ?? null,
       }),
     });
 
-    set((state) => ({
-      tasks: [...state.tasks, mapApiTask(task)],
-    }));
+    await useTaskStore.getState().fetchTasks();
   },
 
   async updateTask(id, input) {
-    const task = await apiClient<ApiTask>(`/tasks/${id}`, {
+    await apiClient<ApiTask>(`/tasks/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({
         ...input,
@@ -135,11 +174,7 @@ export const useTaskStore = create<TaskStore>((set) => ({
       }),
     });
 
-    set((state) => ({
-      tasks: state.tasks.map((currentTask) =>
-        currentTask.id === id ? mapApiTask(task) : currentTask,
-      ),
-    }));
+    await useTaskStore.getState().fetchTasks();
   },
 
   async deleteTask(id) {
@@ -147,40 +182,28 @@ export const useTaskStore = create<TaskStore>((set) => ({
       method: 'DELETE',
     });
 
-    set((state) => ({
-      tasks: state.tasks.filter((task) => task.id !== id),
-    }));
+    await useTaskStore.getState().fetchTasks();
   },
 
   async changeTaskStatus(id, columnId) {
-    const task = await apiClient<ApiTask>(`/tasks/${id}`, {
+    await apiClient<ApiTask>(`/tasks/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({
         columnId,
       }),
     });
 
-    set((state) => ({
-      tasks: state.tasks.map((currentTask) =>
-        currentTask.id === id ? mapApiTask(task) : currentTask,
-      ),
-    }));
+    await useTaskStore.getState().fetchTasks();
   },
 
   async reorderTasks({ taskId, columnId, position }) {
-    const task = await apiClient<ApiTask>(`/tasks/${taskId}/reorder`, {
+    await apiClient<ApiTask>(`/tasks/${taskId}/reorder`, {
       method: 'PATCH',
       body: JSON.stringify({
         columnId,
         position,
       }),
     });
-
-    set((state) => ({
-      tasks: state.tasks.map((currentTask) =>
-        currentTask.id === taskId ? mapApiTask(task) : currentTask,
-      ),
-    }));
 
     await useTaskStore.getState().fetchTasks();
   },
