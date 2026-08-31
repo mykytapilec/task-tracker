@@ -1,14 +1,21 @@
-import type { Task } from '../tasks/types';
-
-export interface BoardColumn {
+export interface Column {
   id: string;
   title: string;
   position: number;
-  tasks: Task[];
+  boardId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardColumn extends Column {
+  tasks: import('../tasks/types').Task[];
 }
 
 export interface Board {
   id: string;
   title: string;
-  columns: BoardColumn[];
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  columns: Column[];
 }

@@ -3,22 +3,18 @@ import { useState, type FormEvent } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+import { useBoardStore } from '../../board/store';
 import { useTaskStore } from '../store';
-import type { Task, TaskPriority } from '../types';
+import type { Task, TaskPriority, TaskStatus } from '../types';
 
 interface TaskCardProps {
   task: Task;
 }
 
-function containsTask(task: Task, taskId: string): boolean {
-  return task.subtasks.some(
-    (subtask) => subtask.id === taskId || containsTask(subtask, taskId),
-  );
-}
-
 function TaskCard({ task }: TaskCardProps) {
   const updateTask = useTaskStore((state) => state.updateTask);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+  const currentBoard = useBoardStore((state) => state.board);
 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -26,23 +22,32 @@ function TaskCard({ task }: TaskCardProps) {
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: task.id,
-      disabled: isEditing || isDeleting,
+      disabled: isEditing || isDeleting || isUpdatingStatus,
     });
 
   const { setNodeRef: setSubtaskDropRef, isOver: isSubtaskDropOver } =
     useDroppable({
       id: `subtask:${task.id}`,
-      disabled: isEditing || isDeleting,
+      disabled: isEditing || isDeleting || isUpdatingStatus,
     });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const completedColumnId =
+    currentBoard?.columns
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .at(-1)?.id ?? null;
+
+  const isInCompletedColumn = task.columnId === completedColumnId;
 
   function handleEdit() {
     setTitle(task.title);
@@ -80,6 +85,31 @@ function TaskCard({ task }: TaskCardProps) {
     }
   }
 
+  async function handleStatusChange() {
+    if (
+      isUpdatingStatus ||
+      isDeleting ||
+      isInCompletedColumn ||
+      !completedColumnId
+    ) {
+      return;
+    }
+
+    const nextStatus: TaskStatus =
+      task.status === 'completed' ? 'pending' : 'completed';
+
+    setIsUpdatingStatus(true);
+
+    try {
+      await updateTask(task.id, {
+        status: nextStatus,
+        columnId: completedColumnId,
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }
+
   async function handleDelete() {
     if (isDeleting) {
       return;
@@ -99,12 +129,6 @@ function TaskCard({ task }: TaskCardProps) {
       await deleteTask(task.id);
     } finally {
       setIsDeleting(false);
-    }
-  }
-
-  function handleSubtaskDrop() {
-    if (containsTask(task, task.id)) {
-      return;
     }
   }
 
@@ -168,16 +192,44 @@ function TaskCard({ task }: TaskCardProps) {
     );
   }
 
+  const isCompleted = task.status === 'completed';
+
   return (
     <article
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="cursor-grab rounded-lg bg-white p-4 shadow"
+      className={`cursor-grab rounded-lg bg-white p-4 shadow ${
+        isCompleted ? 'opacity-70' : ''
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-medium">{task.title}</h3>
+        <div className="flex min-w-0 items-start gap-2">
+          <input
+            type="checkbox"
+            checked={isCompleted}
+            onChange={() => {
+              void handleStatusChange();
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            disabled={
+              isUpdatingStatus || isDeleting || isInCompletedColumn
+            }
+            className="mt-1 h-4 w-4 shrink-0"
+            aria-label={
+              isCompleted ? 'Task completed' : 'Mark task as completed'
+            }
+          />
+
+          <h3
+            className={`font-medium ${
+              isCompleted ? 'text-slate-500 line-through' : ''
+            }`}
+          >
+            {task.title}
+          </h3>
+        </div>
 
         <div className="flex shrink-0 gap-2">
           <button
@@ -187,7 +239,7 @@ function TaskCard({ task }: TaskCardProps) {
               event.stopPropagation();
               handleEdit();
             }}
-            disabled={isDeleting}
+            disabled={isDeleting || isUpdatingStatus}
             className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Edit
@@ -200,7 +252,7 @@ function TaskCard({ task }: TaskCardProps) {
               event.stopPropagation();
               void handleDelete();
             }}
-            disabled={isDeleting}
+            disabled={isDeleting || isUpdatingStatus}
             className="rounded border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isDeleting ? 'Deleting...' : 'Delete'}
@@ -208,17 +260,32 @@ function TaskCard({ task }: TaskCardProps) {
         </div>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">{task.description}</p>
+      <p
+        className={`mt-2 text-sm ${
+          isCompleted ? 'text-slate-400' : 'text-slate-600'
+        }`}
+      >
+        {task.description}
+      </p>
 
-      <div className="mt-3">
+      <div className="mt-3 flex items-center gap-2">
         <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
           {task.priority}
+        </span>
+
+        <span
+          className={`rounded px-2 py-1 text-xs ${
+            isCompleted
+              ? 'bg-green-100 text-green-700'
+              : 'bg-yellow-100 text-yellow-700'
+          }`}
+        >
+          {isCompleted ? 'completed' : 'pending'}
         </span>
       </div>
 
       <div
         ref={setSubtaskDropRef}
-        onDrop={handleSubtaskDrop}
         className={`mt-4 rounded border border-dashed px-3 py-2 text-xs transition ${
           isSubtaskDropOver
             ? 'border-blue-500 bg-blue-50 text-blue-700'

@@ -1,32 +1,47 @@
 import { useEffect } from 'react';
 
-import AuthPage from './features/auth/components/AuthPage.tsx';
-import { useAuthStore } from './features/auth/store.js';
-import Board from './features/board/components/Board.tsx';
-import { useBoardStore } from './features/board/store.js';
-import { useTaskStore } from './features/tasks/store.js';
-import MainLayout from './layouts/MainLayout.tsx';
+import AuthPage from './features/auth/components/AuthPage';
+import { useAuthStore } from './features/auth/store';
+import Board from './features/board/components/Board';
+import { useBoardStore } from './features/board/store';
+import { useTaskStore } from './features/tasks/store';
+import MainLayout from './layouts/MainLayout';
 
 function App() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const fetchBoard = useBoardStore((state) => state.fetchBoard);
-  const board = useBoardStore((state) => state.board);
+  const token = useAuthStore((state) => state.token);
+
+  const boards = useBoardStore((state) => state.boards);
+  const activeBoardId = useBoardStore((state) => state.activeBoardId);
+  const fetchBoards = useBoardStore((state) => state.fetchBoards);
+
   const fetchTasks = useTaskStore((state) => state.fetchTasks);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!token) {
       return;
     }
 
-    void Promise.all([fetchBoard(), fetchTasks()]);
-  }, [isAuthenticated, fetchBoard, fetchTasks]);
+    void fetchBoards();
+  }, [token, fetchBoards]);
 
-  if (!isAuthenticated) {
+  useEffect(() => {
+    if (!token || !activeBoardId) {
+      return;
+    }
+
+    void fetchTasks();
+  }, [token, activeBoardId, fetchTasks]);
+
+  if (!token) {
     return <AuthPage />;
   }
 
-  if (!board) {
-    return <div>Loading board...</div>;
+  if (!boards.length) {
+    return (
+      <MainLayout>
+        <div>No boards available.</div>
+      </MainLayout>
+    );
   }
 
   return (

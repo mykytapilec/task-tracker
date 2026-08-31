@@ -1,50 +1,115 @@
 import { create } from 'zustand';
 
-import { apiClient } from '../../api/client.js';
-import type { Board } from './types.js';
+import { apiClient } from '../../api/client';
+import type { Board } from './types';
 
-interface ApiColumn {
-  id: string;
-  title: string;
-  position: number;
-}
-
-interface ApiBoard {
-  id: string;
-  title: string;
-  columns: ApiColumn[];
-}
-
-interface BoardStore {
+interface BoardState {
+  boards: Board[];
   board: Board | null;
+  activeBoardId: string | null;
   isLoading: boolean;
-  fetchBoard: () => Promise<void>;
+  error: string | null;
+
+  fetchBoards: () => Promise<void>;
+  selectBoard: (boardId: string) => Promise<void>;
+  createBoard: (title: string) => Promise<void>;
 }
 
-export const useBoardStore = create<BoardStore>((set) => ({
+export const useBoardStore = create<BoardState>((set, get) => ({
+  boards: [],
   board: null,
+  activeBoardId: null,
   isLoading: false,
+  error: null,
 
-  async fetchBoard() {
-    set({ isLoading: true });
+  fetchBoards: async () => {
+    set({
+      isLoading: true,
+      error: null,
+    });
 
     try {
-      const board = await apiClient<ApiBoard>('/board');
+      const boards = await apiClient<Board[]>('/boards');
+
+      const currentActiveBoardId = get().activeBoardId;
+
+      const activeBoard =
+        boards.find((board) => board.id === currentActiveBoardId) ??
+        boards[0] ??
+        null;
 
       set({
-        board: {
-          id: board.id,
-          title: board.title,
-          columns: board.columns.map((column) => ({
-            ...column,
-            tasks: [],
-          })),
-        },
+        boards,
+        board: activeBoard,
+        activeBoardId: activeBoard?.id ?? null,
         isLoading: false,
       });
     } catch (error) {
-      set({ isLoading: false });
-      throw error;
+      set({
+        isLoading: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch boards',
+      });
+    }
+  },
+
+  selectBoard: async (boardId: string) => {
+    const existingBoard = get().boards.find((board) => board.id === boardId);
+
+    if (existingBoard) {
+      set({
+        board: existingBoard,
+        activeBoardId: boardId,
+        error: null,
+      });
+      return;
+    }
+
+    set({
+      isLoading: true,
+      error: null,
+    });
+
+    try {
+      const board = await apiClient<Board>(`/boards/${boardId}`);
+
+      set({
+        board,
+        activeBoardId: boardId,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch board',
+      });
+    }
+  },
+
+  createBoard: async (title: string) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+
+    try {
+      const newBoard = await apiClient<Board>('/boards', {
+        method: 'POST',
+        body: JSON.stringify({ title }),
+      });
+
+      set((state) => ({
+        boards: [...state.boards, newBoard],
+        board: newBoard,
+        activeBoardId: newBoard.id,
+        isLoading: false,
+      }));
+    } catch (error) {
+      set({
+        isLoading: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to create board',
+      });
     }
   },
 }));
