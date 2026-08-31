@@ -8,7 +8,7 @@ interface TaskFormProps {
 }
 
 function TaskForm({ columnId }: TaskFormProps) {
-  const addTask = useTaskStore((state) => state.addTask);
+  const createTask = useTaskStore((state) => state.createTask);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -25,7 +25,7 @@ function TaskForm({ columnId }: TaskFormProps) {
     setIsSubmitting(true);
 
     try {
-      await addTask({
+      await createTask({
         title: title.trim(),
         description: description.trim(),
         priority,

@@ -4,10 +4,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
-import ColumnHeader from './ColumnHeader';
 import TaskCard from '../../tasks/components/TaskCard';
 
 import type { BoardColumn } from '../types';
+
+import ColumnHeader from './ColumnHeader';
 
 interface ColumnProps {
   column: BoardColumn;
@@ -19,12 +20,7 @@ function Column({ column }: ColumnProps) {
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`flex min-h-96 w-80 flex-col rounded-lg p-4 ${
-        isOver ? 'bg-blue-50' : 'bg-gray-100'
-      }`}
-    >
+    <div className="flex min-h-96 w-80 flex-col rounded-lg bg-gray-100 p-4">
       <ColumnHeader column={column} />
 
       <SortableContext
@@ -33,8 +29,20 @@ function Column({ column }: ColumnProps) {
       >
         <div className="mt-4 flex flex-1 flex-col gap-3">
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} />
+            <TaskCard
+              key={task.id}
+              task={task}
+            />
           ))}
+
+          <div
+            ref={setNodeRef}
+            className={`min-h-24 flex-1 rounded border-2 border-dashed transition ${
+              isOver
+                ? 'border-blue-400 bg-blue-50'
+                : 'border-transparent'
+            }`}
+          />
         </div>
       </SortableContext>
     </div>

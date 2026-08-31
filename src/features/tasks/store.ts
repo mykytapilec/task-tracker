@@ -1,210 +1,161 @@
 import { create } from 'zustand';
 
-import { apiClient } from '../../api/client.js';
-import type { Task, TaskPriority, TaskStatus } from './types.js';
-
-interface ApiTask {
-  id: string;
-  title: string;
-  description: string | null;
-  position: number;
-  priority: number;
-  columnId: string;
-  parentTaskId: string | null;
-  column: {
-    id: string;
-    title: string;
-    position: number;
-  };
-  subtasks?: ApiTask[];
-  createdAt: string;
-  updatedAt: string;
-}
+import { apiClient } from '../../api/client';
+import { useBoardStore } from '../board/store';
+import type { Task, TaskPriority } from './types';
 
 interface CreateTaskInput {
   title: string;
-  description: string;
-  priority: TaskPriority;
+  description?: string;
   columnId: string;
+  priority?: TaskPriority;
   parentTaskId?: string | null;
 }
 
 interface UpdateTaskInput {
   title?: string;
   description?: string;
-  priority?: TaskPriority;
   columnId?: string;
+  priority?: TaskPriority;
   parentTaskId?: string | null;
+  status?: 'pending' | 'completed';
 }
 
-interface ReorderTasksInput {
+interface ReorderTaskInput {
   taskId: string;
   columnId: string;
   position: number;
 }
 
-interface TaskStore {
+interface TaskState {
   tasks: Task[];
   isLoading: boolean;
+  error: string | null;
+
   fetchTasks: () => Promise<void>;
-  addTask: (input: CreateTaskInput) => Promise<void>;
-  updateTask: (id: string, input: UpdateTaskInput) => Promise<void>;
+  createTask: (data: CreateTaskInput) => Promise<void>;
+  updateTask: (id: string, data: UpdateTaskInput) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
-  changeTaskStatus: (id: string, columnId: string) => Promise<void>;
-  reorderTasks: (input: ReorderTasksInput) => Promise<void>;
+  reorderTask: (data: ReorderTaskInput) => Promise<void>;
 }
 
-const mapPriority = (priority: ApiTask['priority']): TaskPriority => {
-  if (priority === 3) {
-    return 'high';
-  }
+function normalizeTask(task: Task): Task {
+  return {
+    ...task,
+    subtasks: (task.subtasks ?? []).map(normalizeTask),
+  };
+}
 
-  if (priority === 2) {
-    return 'medium';
-  }
+function normalizeTasks(tasks: Task[]): Task[] {
+  return tasks.map(normalizeTask);
+}
 
-  return 'low';
-};
-
-const mapColumnToStatus = (columnTitle: string): TaskStatus => {
-  if (columnTitle === 'To Do') {
-    return 'todo';
-  }
-
-  if (columnTitle === 'In Progress') {
-    return 'in-progress';
-  }
-
-  return 'completed';
-};
-
-const mapApiTask = (task: ApiTask): Task => ({
-  id: task.id,
-  title: task.title,
-  description: task.description ?? '',
-  status: mapColumnToStatus(task.column.title),
-  priority: mapPriority(task.priority),
-  columnId: task.columnId,
-  position: task.position,
-  parentTaskId: task.parentTaskId,
-  subtasks: task.subtasks?.map(mapApiTask) ?? [],
-  createdAt: task.createdAt,
-  updatedAt: task.updatedAt,
-});
-
-const buildTaskTree = (tasks: ApiTask[]): ApiTask[] => {
-  const taskMap = new Map<string, ApiTask>();
-
-  for (const task of tasks) {
-    taskMap.set(task.id, {
-      ...task,
-      subtasks: [],
-    });
-  }
-
-  for (const task of tasks) {
-    if (!task.parentTaskId) {
-      continue;
-    }
-
-    const parentTask = taskMap.get(task.parentTaskId);
-
-    if (!parentTask) {
-      continue;
-    }
-
-    parentTask.subtasks = [
-      ...(parentTask.subtasks ?? []),
-      taskMap.get(task.id)!,
-    ];
-  }
-
-  return tasks
-    .filter((task) => !task.parentTaskId)
-    .map((task) => taskMap.get(task.id)!)
-    .sort((a, b) => a.position - b.position);
-};
-
-export const useTaskStore = create<TaskStore>((set) => ({
+export const useTaskStore = create<TaskState>((set) => ({
   tasks: [],
   isLoading: false,
+  error: null,
 
-  async fetchTasks() {
-    set({ isLoading: true });
+  fetchTasks: async () => {
+    const boardId = useBoardStore.getState().activeBoardId;
+
+    if (!boardId) {
+      set({
+        tasks: [],
+        error: null,
+      });
+      return;
+    }
+
+    set({
+      isLoading: true,
+      error: null,
+    });
 
     try {
-      const response = await apiClient<ApiTask[]>('/tasks');
-      const tasks = buildTaskTree(response);
+      const tasks = await apiClient<Task[]>('/tasks', {
+        params: {
+          boardId,
+        },
+      });
 
       set({
-        tasks: tasks.map(mapApiTask),
+        tasks: normalizeTasks(tasks),
         isLoading: false,
       });
     } catch (error) {
-      set({ isLoading: false });
-      throw error;
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch tasks',
+      });
     }
   },
 
-  async addTask(input) {
-    await apiClient<ApiTask>('/tasks', {
-      method: 'POST',
-      body: JSON.stringify({
-        title: input.title,
-        description: input.description,
-        priority:
-          input.priority === 'high' ? 3 : input.priority === 'medium' ? 2 : 1,
-        columnId: input.columnId,
-        parentTaskId: input.parentTaskId ?? null,
-      }),
+  createTask: async (data) => {
+    set({
+      isLoading: true,
+      error: null,
     });
 
-    await useTaskStore.getState().fetchTasks();
+    try {
+      await apiClient<Task>('/tasks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+
+      await useTaskStore.getState().fetchTasks();
+    } catch (error) {
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to create task',
+      });
+    }
   },
 
-  async updateTask(id, input) {
-    await apiClient<ApiTask>(`/tasks/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        ...input,
-        ...(input.priority && {
-          priority:
-            input.priority === 'high' ? 3 : input.priority === 'medium' ? 2 : 1,
+  updateTask: async (id, data) => {
+    try {
+      await apiClient<Task>(`/tasks/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+
+      await useTaskStore.getState().fetchTasks();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update task',
+      });
+    }
+  },
+
+  deleteTask: async (id) => {
+    try {
+      await apiClient<void>(`/tasks/${id}`, {
+        method: 'DELETE',
+      });
+
+      await useTaskStore.getState().fetchTasks();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to delete task',
+      });
+    }
+  },
+
+  reorderTask: async ({ taskId, columnId, position }) => {
+    try {
+      await apiClient<Task>(`/tasks/${taskId}/reorder`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          columnId,
+          position,
         }),
-      }),
-    });
+      });
 
-    await useTaskStore.getState().fetchTasks();
-  },
-
-  async deleteTask(id) {
-    await apiClient<void>(`/tasks/${id}`, {
-      method: 'DELETE',
-    });
-
-    await useTaskStore.getState().fetchTasks();
-  },
-
-  async changeTaskStatus(id, columnId) {
-    await apiClient<ApiTask>(`/tasks/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        columnId,
-      }),
-    });
-
-    await useTaskStore.getState().fetchTasks();
-  },
-
-  async reorderTasks({ taskId, columnId, position }) {
-    await apiClient<ApiTask>(`/tasks/${taskId}/reorder`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        columnId,
-        position,
-      }),
-    });
-
-    await useTaskStore.getState().fetchTasks();
+      await useTaskStore.getState().fetchTasks();
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : 'Failed to reorder task',
+      });
+    }
   },
 }));

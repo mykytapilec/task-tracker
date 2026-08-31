@@ -4,6 +4,7 @@ const TOKEN_KEY = 'task-tracker-token';
 
 interface ApiRequestOptions extends RequestInit {
   token?: string;
+  params?: Record<string, string | undefined>;
 }
 
 interface ApiErrorResponse {
@@ -14,12 +15,22 @@ export const apiClient = async <T>(
   endpoint: string,
   options: ApiRequestOptions = {},
 ): Promise<T> => {
-  const { token, ...fetchOptions } = options;
+  const { token, params, ...fetchOptions } = options;
 
   const storedToken = localStorage.getItem(TOKEN_KEY);
   const authToken = token ?? storedToken;
 
-  const response = await fetch(`${API_URL}/api${endpoint}`, {
+  const query = params
+    ? new URLSearchParams(
+        Object.entries(params).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      ).toString()
+    : '';
+
+  const url = `${API_URL}/api${endpoint}${query ? `?${query}` : ''}`;
+
+  const response = await fetch(url, {
     ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
