@@ -1,51 +1,54 @@
 import { useDroppable } from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-
-import TaskCard from '../../tasks/components/TaskCard';
 
 import type { BoardColumn } from '../types';
-
-import ColumnHeader from './ColumnHeader';
+import TaskCard from '../../tasks/components/TaskCard';
+import type { Task } from '../../tasks/types';
 
 interface ColumnProps {
-  column: BoardColumn;
+  column: BoardColumn & {
+    tasks: Task[];
+  };
+  onTaskOpen: (taskId: string) => void;
 }
 
-function Column({ column }: ColumnProps) {
+function Column({ column, onTaskOpen }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
 
   return (
-    <div className="flex min-h-96 w-80 flex-col rounded-lg bg-gray-100 p-4">
-      <ColumnHeader column={column} />
+    <section
+      ref={setNodeRef}
+      className={`min-w-0 rounded-xl border p-4 transition ${
+        isOver
+          ? 'border-blue-400 bg-blue-50'
+          : 'border-slate-200 bg-slate-50'
+      }`}
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-slate-800">{column.title}</h2>
 
-      <SortableContext
-        items={column.tasks.map((task) => task.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className="mt-4 flex flex-1 flex-col gap-3">
-          {column.tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-            />
-          ))}
+        <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
+          {column.tasks.length}
+        </span>
+      </div>
 
-          <div
-            ref={setNodeRef}
-            className={`min-h-24 flex-1 rounded border-2 border-dashed transition ${
-              isOver
-                ? 'border-blue-400 bg-blue-50'
-                : 'border-transparent'
-            }`}
+      <div className="space-y-3">
+        {column.tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            onTaskOpen={onTaskOpen}
           />
-        </div>
-      </SortableContext>
-    </div>
+        ))}
+
+        {!column.tasks.length && (
+          <p className="rounded-lg border border-dashed border-slate-300 px-3 py-6 text-center text-sm text-slate-500">
+            No tasks
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 

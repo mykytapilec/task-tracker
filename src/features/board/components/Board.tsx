@@ -1,10 +1,13 @@
 import {
   closestCenter,
   DndContext,
+  PointerSensor,
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
   pointerWithin,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import { useState } from 'react';
 
@@ -31,7 +34,9 @@ function containsTask(task: Task, taskId: string): boolean {
   );
 }
 
-function collisionDetectionStrategy(args: Parameters<typeof pointerWithin>[0]) {
+function collisionDetectionStrategy(
+  args: Parameters<typeof pointerWithin>[0],
+) {
   const pointerCollisions = pointerWithin(args);
 
   if (pointerCollisions.length > 0) {
@@ -41,7 +46,11 @@ function collisionDetectionStrategy(args: Parameters<typeof pointerWithin>[0]) {
   return closestCenter(args);
 }
 
-function Board() {
+interface BoardProps {
+  onTaskOpen: (taskId: string) => void;
+}
+
+function Board({ onTaskOpen }: BoardProps) {
   const currentBoard = useBoardStore((state) => state.board);
   const tasks = useTaskStore((state) => state.tasks);
   const reorderTask = useTaskStore((state) => state.reorderTask);
@@ -49,6 +58,14 @@ function Board() {
 
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<TaskSortMode>('manual');
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
 
   if (!currentBoard) {
     return <p>Loading board...</p>;
@@ -214,6 +231,7 @@ function Board() {
 
   return (
     <DndContext
+      sensors={sensors}
       collisionDetection={collisionDetectionStrategy}
       onDragStart={handleDragStart}
       onDragEnd={(event) => {
@@ -261,6 +279,7 @@ function Board() {
             <Column
               key={column.id}
               column={column}
+              onTaskOpen={onTaskOpen}
             />
           ))}
         </div>

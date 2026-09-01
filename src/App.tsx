@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import AuthPage from './features/auth/components/AuthPage';
 import { useAuthStore } from './features/auth/store';
 import Board from './features/board/components/Board';
 import { useBoardStore } from './features/board/store';
+import TaskDetails from './features/tasks/components/TaskDetails';
 import { useTaskStore } from './features/tasks/store';
 import MainLayout from './layouts/MainLayout';
 
@@ -15,6 +16,11 @@ function App() {
   const fetchBoards = useBoardStore((state) => state.fetchBoards);
 
   const fetchTasks = useTaskStore((state) => state.fetchTasks);
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskBoardId, setSelectedTaskBoardId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!token) {
@@ -32,6 +38,25 @@ function App() {
     void fetchTasks();
   }, [token, activeBoardId, fetchTasks]);
 
+  function handleTaskOpen(taskId: string) {
+    if (!activeBoardId) {
+      return;
+    }
+
+    setSelectedTaskId(taskId);
+    setSelectedTaskBoardId(activeBoardId);
+  }
+
+  function handleBackToBoard() {
+    setSelectedTaskId(null);
+    setSelectedTaskBoardId(null);
+  }
+
+  const isSelectedTaskOnActiveBoard =
+    selectedTaskId !== null &&
+    selectedTaskBoardId !== null &&
+    selectedTaskBoardId === activeBoardId;
+
   if (!token) {
     return <AuthPage />;
   }
@@ -46,7 +71,16 @@ function App() {
 
   return (
     <MainLayout>
-      <Board />
+      {isSelectedTaskOnActiveBoard ? (
+        <TaskDetails
+          key={selectedTaskId}
+          taskId={selectedTaskId}
+          onBack={handleBackToBoard}
+          onTaskOpen={handleTaskOpen}
+        />
+      ) : (
+        <Board onTaskOpen={handleTaskOpen} />
+      )}
     </MainLayout>
   );
 }
