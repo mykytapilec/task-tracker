@@ -2,13 +2,14 @@ import { create } from 'zustand';
 
 import { apiClient } from '../../api/client';
 import { useBoardStore } from '../board/store';
-import type { Task, TaskPriority } from './types';
+import type { Task, TaskPriority, TaskStoryPoints } from './types';
 
 interface CreateTaskInput {
   title: string;
   description?: string;
   columnId: string;
   priority?: TaskPriority;
+  storyPoints?: TaskStoryPoints;
   parentTaskId?: string | null;
 }
 
@@ -17,6 +18,7 @@ interface UpdateTaskInput {
   description?: string;
   columnId?: string;
   priority?: TaskPriority;
+  storyPoints?: TaskStoryPoints;
   parentTaskId?: string | null;
   status?: 'pending' | 'completed';
 }
@@ -85,7 +87,8 @@ export const useTaskStore = create<TaskState>((set) => ({
     } catch (error) {
       set({
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch tasks',
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch tasks',
       });
     }
   },
@@ -106,7 +109,8 @@ export const useTaskStore = create<TaskState>((set) => ({
     } catch (error) {
       set({
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to create task',
+        error:
+          error instanceof Error ? error.message : 'Failed to create task',
       });
     }
   },
@@ -121,7 +125,8 @@ export const useTaskStore = create<TaskState>((set) => ({
       await useTaskStore.getState().fetchTasks();
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to update task',
+        error:
+          error instanceof Error ? error.message : 'Failed to update task',
       });
     }
   },
@@ -135,7 +140,8 @@ export const useTaskStore = create<TaskState>((set) => ({
       await useTaskStore.getState().fetchTasks();
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to delete task',
+        error:
+          error instanceof Error ? error.message : 'Failed to delete task',
       });
     }
   },
