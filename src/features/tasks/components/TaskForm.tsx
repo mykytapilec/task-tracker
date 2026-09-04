@@ -1,7 +1,11 @@
 import { useState } from 'react';
 
 import { useTaskStore } from '../store';
-import type { TaskPriority } from '../types';
+import {
+  TASK_STORY_POINTS,
+  type TaskPriority,
+  type TaskStoryPoints,
+} from '../types';
 
 interface TaskFormProps {
   columnId: string;
@@ -13,6 +17,7 @@ function TaskForm({ columnId }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [storyPoints, setStoryPoints] = useState<TaskStoryPoints>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -29,12 +34,14 @@ function TaskForm({ columnId }: TaskFormProps) {
         title: title.trim(),
         description: description.trim(),
         priority,
+        storyPoints,
         columnId,
       });
 
       setTitle('');
       setDescription('');
       setPriority('medium');
+      setStoryPoints(1);
     } finally {
       setIsSubmitting(false);
     }
@@ -72,6 +79,21 @@ function TaskForm({ columnId }: TaskFormProps) {
         <option value="low">Low priority</option>
         <option value="medium">Medium priority</option>
         <option value="high">High priority</option>
+      </select>
+
+      <select
+        value={storyPoints}
+        onChange={(event) =>
+          setStoryPoints(Number(event.target.value) as TaskStoryPoints)
+        }
+        disabled={isSubmitting}
+        className="mt-3 w-full rounded border border-slate-300 px-3 py-2"
+      >
+        {TASK_STORY_POINTS.map((points) => (
+          <option key={points} value={points}>
+            {points} story points
+          </option>
+        ))}
       </select>
 
       <button

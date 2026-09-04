@@ -164,6 +164,10 @@ function TaskCard({ task, onTaskOpen }: TaskCardProps) {
               {task.priority}
             </span>
 
+            <span className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
+              SP: {task.storyPoints}
+            </span>
+
             <span
               className={`rounded px-2 py-1 text-xs ${
                 isCompleted
