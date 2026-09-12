@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { useBoardStore } from '../features/board/store';
+import { useAuthStore } from '../features/auth/store';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -13,6 +14,7 @@ function MainLayout({ children }: MainLayoutProps) {
   const selectBoard = useBoardStore((state) => state.selectBoard);
   const createBoard = useBoardStore((state) => state.createBoard);
   const isLoading = useBoardStore((state) => state.isLoading);
+  const logout = useAuthStore((state) => state.logout);
 
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [newBoardTitle, setNewBoardTitle] = useState('');
@@ -77,6 +79,13 @@ function MainLayout({ children }: MainLayoutProps) {
               className="rounded bg-slate-900 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isCreatingBoard ? 'Creating...' : 'Add board'}
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Logout
             </button>
           </div>
         </div>
