@@ -1,73 +1,252 @@
-# React + TypeScript + Vite
+# Task Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A task management application built with React and TypeScript. The application allows users to create boards, organize tasks into columns, manage task details, and authenticate securely.
 
-Currently, two official plugins are available:
+The project was built as part of the [Task Tracker project on roadmap.sh](https://roadmap.sh/projects/task-tracker-js).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Live Demo
 
-## React Compiler
+Production: https://task-tracker-hvalya.duckdns.org
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
 
-## Expanding the ESLint configuration
+* User registration and login
+* JWT-based authentication
+* Logout functionality
+* Board creation and selection
+* Task creation and management
+* Task details view
+* Drag-and-drop task organization
+* Responsive interface
+* Production deployment with HTTPS
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+* React
+* TypeScript
+* Vite
+* Tailwind CSS
+* Zustand
+* dnd-kit
+* Node.js
+* Express
+* PostgreSQL
+* Prisma
+* JWT
+* Nginx
+* AWS EC2
+* Let's Encrypt
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Project Structure
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```text
+src/
+├── api/
+│   ├── auth.ts
+│   └── client.ts
+├── features/
+│   ├── auth/
+│   │   ├── components/
+│   │   └── store.ts
+│   ├── board/
+│   │   ├── components/
+│   │   ├── constants.ts
+│   │   ├── store.ts
+│   │   └── types.ts
+│   └── tasks/
+│       ├── components/
+│       ├── constants.ts
+│       ├── store.ts
+│       └── types.ts
+├── layouts/
+│   └── MainLayout.tsx
+├── App.tsx
+├── index.css
+└── main.tsx
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Getting Started
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
+### Prerequisites
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+Make sure the following tools are installed:
+
+* Node.js 22 or later
+* npm
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/mykytapilec/task-tracker.git
+cd task-tracker
 ```
+
+Install dependencies:
+
+```bash
+npm ci
+```
+
+### Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+The backend API is expected to be available at `http://localhost:3000`.
+
+For local development, the Vite development server proxies `/api` requests to the backend.
+
+### Run the Development Server
+
+```bash
+npm run dev
+```
+
+The application will be available at:
+
+```text
+http://localhost:5173
+```
+
+## Available Scripts
+
+### Development
+
+```bash
+npm run dev
+```
+
+Starts the Vite development server.
+
+### Type Checking
+
+```bash
+npm run typecheck
+```
+
+Runs the TypeScript compiler without emitting files.
+
+### Linting
+
+```bash
+npm run lint
+```
+
+Runs ESLint across the project.
+
+### Build
+
+```bash
+npm run build
+```
+
+Creates an optimized production build.
+
+### Checks
+
+```bash
+npm run check
+```
+
+Runs type checking and linting.
+
+### Formatting
+
+```bash
+npm run format
+```
+
+Formats the project using Prettier.
+
+### Preview
+
+```bash
+npm run preview
+```
+
+Serves the production build locally for preview.
+
+## Authentication
+
+Authentication is handled using JWT tokens.
+
+After a successful login or registration, the token is stored in the browser's local storage and automatically attached to authenticated API requests.
+
+Logging out removes the stored token and resets the authentication state.
+
+## API
+
+The frontend communicates with the backend through REST API endpoints.
+
+The API client automatically:
+
+* Adds the `/api` prefix
+* Attaches the JWT authorization header when a token is available
+* Handles query parameters
+* Parses API responses
+* Converts API errors into JavaScript errors
+
+## Production
+
+The production application is served through Nginx.
+
+```text
+Browser
+   |
+   v
+HTTPS
+   |
+   v
+Nginx
+   |
+   +---- / ------> React frontend
+   |
+   +---- /api ---> Node.js API
+                     |
+                     v
+                 PostgreSQL
+```
+
+The production application is available at:
+
+```text
+https://task-tracker-hvalya.duckdns.org
+```
+
+HTTPS is provided by Let's Encrypt and automatically renewed by Certbot.
+
+## Development Workflow
+
+The project follows a Git flow based on a stable `main` branch and a development branch:
+
+```text
+main
+  |
+  v
+dev
+  |
+  +---- feature/...
+  |
+  +---- feature/...
+  |
+  +---- feature/...
+```
+
+Feature branches are created from `dev` and merged back into `dev` through pull requests.
+
+## Related Project
+
+Backend repository:
+
+https://github.com/mykytapilec/task-tracker-api
+
+## Roadmap
+
+Project specification:
+
+https://roadmap.sh/projects/task-tracker-js
